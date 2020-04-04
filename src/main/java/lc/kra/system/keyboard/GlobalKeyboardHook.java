@@ -26,16 +26,18 @@ import static lc.kra.system.keyboard.event.GlobalKeyEvent.VK_CONTROL;
 import static lc.kra.system.keyboard.event.GlobalKeyEvent.VK_LCONTROL;
 import static lc.kra.system.keyboard.event.GlobalKeyEvent.VK_LMENU;
 import static lc.kra.system.keyboard.event.GlobalKeyEvent.VK_LSHIFT;
+import static lc.kra.system.keyboard.event.GlobalKeyEvent.VK_LWIN;
 import static lc.kra.system.keyboard.event.GlobalKeyEvent.VK_MENU;
 import static lc.kra.system.keyboard.event.GlobalKeyEvent.VK_RCONTROL;
 import static lc.kra.system.keyboard.event.GlobalKeyEvent.VK_RMENU;
 import static lc.kra.system.keyboard.event.GlobalKeyEvent.VK_RSHIFT;
 import static lc.kra.system.keyboard.event.GlobalKeyEvent.VK_RWIN;
-import static lc.kra.system.keyboard.event.GlobalKeyEvent.VK_LWIN;
 import static lc.kra.system.keyboard.event.GlobalKeyEvent.VK_SHIFT;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -54,6 +56,10 @@ public class GlobalKeyboardHook {
 	private boolean menuPressed, shiftPressed, controlPressed, winPressed, extendedKey;
 	
 	private List<GlobalKeyListener> listeners = new CopyOnWriteArrayList<GlobalKeyListener>();
+	
+	private Set<Integer> holdDownKeyCodes = new HashSet<Integer>();
+	
+	
 	private Thread eventDispatcher = new Thread() {{
 			setName("Global Keyboard Hook Dispatcher");
 			setDaemon(true);
@@ -132,19 +138,66 @@ public class GlobalKeyboardHook {
 	 * @param event A global key event
 	 */
 	private void keyPressed(GlobalKeyEvent event) {
+		
+		int virtualKeyCode = event.getVirtualKeyCode();
+		
+		// only add if key is not already hold down
+		if(!isKeyHoldDown(event))
+			holdDownKeyCodes.add(virtualKeyCode);
+		
 		for(GlobalKeyListener listener:listeners)
 			listener.keyPressed(event);
 	}
+	
 	/**
 	 * Invoke keyReleased (transition state TS_UP) for all registered listeners
 	 * 
 	 * @param event A global key event
 	 */
 	private void keyReleased(GlobalKeyEvent event) {
+
+		int virtualKeyCode = event.getVirtualKeyCode();
+
+		// redundant if - key should always be hold down if you can release it, but you never know
+		if(isKeyHoldDown(event))
+			holdDownKeyCodes.remove(virtualKeyCode);
+		
 		for(GlobalKeyListener listener:listeners)
 			listener.keyReleased(event);
 	}
 
+	/**
+	 * Checks if the specified key is currently hold down
+	 * 
+	 * @param virtualKeyCode the virtual code of the key, use constants in {@link GlobalKeyEvent}
+	 * 
+	 * @return true if the key is currently hold down
+	 */
+	public boolean isKeyHoldDown(int virtualKeyCode) {
+		return holdDownKeyCodes.contains(virtualKeyCode);
+	}
+	
+	
+	/**
+	 * Checks if all the specified keys are currently hold down
+	 * 
+	 * @param virtualKeyCodes any number of specified key codes, use constants in {@link GlobalKeyEvent}
+	 * 
+	 * @return true if all the specified keys are currently hold down, false if any of the keys is not currently hold down
+	 */
+	public boolean areKeysHoldDown(int... virtualKeyCodes) {
+		for(int keyCode : virtualKeyCodes) {
+			if(!isKeyHoldDown(keyCode)) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	private boolean isKeyHoldDown(GlobalKeyEvent event) {
+		return isKeyHoldDown(event.getVirtualKeyCode());
+	}
+	
 	/**
 	 * Checks whether the keyboard hook is still alive and capturing inputs
 	 * 
