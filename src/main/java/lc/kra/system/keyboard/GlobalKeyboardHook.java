@@ -60,8 +60,7 @@ public class GlobalKeyboardHook {
 	
 	private List<GlobalKeyListener> listeners = new CopyOnWriteArrayList<GlobalKeyListener>();
 	
-	private Set<Integer> holdDownKeyCodes = new HashSet<Integer>();
-	
+	private Set<Integer> heldDownKeyCodes = new HashSet<Integer>();
 	
 	private Thread eventDispatcher = new Thread() {{
 			setName("Global Keyboard Hook Dispatcher");
@@ -152,12 +151,7 @@ public class GlobalKeyboardHook {
 	 * @param event A global key event
 	 */
 	private void keyPressed(GlobalKeyEvent event) {
-		
-		int virtualKeyCode = event.getVirtualKeyCode();
-		
-		// only add if key is not already hold down
-		if(!isKeyHoldDown(event))
-			holdDownKeyCodes.add(virtualKeyCode);
+		heldDownKeyCodes.add(event.getVirtualKeyCode());
 		
 		for(GlobalKeyListener listener:listeners)
 			listener.keyPressed(event);
@@ -169,47 +163,38 @@ public class GlobalKeyboardHook {
 	 * @param event A global key event
 	 */
 	private void keyReleased(GlobalKeyEvent event) {
-
-		int virtualKeyCode = event.getVirtualKeyCode();
-
-		// redundant if - key should always be hold down if you can release it, but you never know
-		if(isKeyHoldDown(event))
-			holdDownKeyCodes.remove(virtualKeyCode);
+		heldDownKeyCodes.remove(event.getVirtualKeyCode());
 		
 		for(GlobalKeyListener listener:listeners)
 			listener.keyReleased(event);
 	}
 
 	/**
-	 * Checks if the specified key is currently hold down
+	 * Checks if the specified key is currently held down
 	 * 
 	 * @param virtualKeyCode the virtual code of the key, use constants in {@link GlobalKeyEvent}
 	 * 
-	 * @return true if the key is currently hold down
+	 * @return true if the key is currently held down
 	 */
-	public boolean isKeyHoldDown(int virtualKeyCode) {
-		return holdDownKeyCodes.contains(virtualKeyCode);
+	public boolean isKeyHeldDown(int virtualKeyCode) {
+		return heldDownKeyCodes.contains(virtualKeyCode);
 	}
 	
 	
 	/**
-	 * Checks if all the specified keys are currently hold down
+	 * Checks if all the specified keys are currently held down
 	 * 
 	 * @param virtualKeyCodes any number of specified key codes, use constants in {@link GlobalKeyEvent}
 	 * 
-	 * @return true if all the specified keys are currently hold down, false if any of the keys is not currently hold down
+	 * @return true if all the specified keys are currently held down, false if any of the keys is not currently held down
 	 */
-	public boolean areKeysHoldDown(int... virtualKeyCodes) {
+	public boolean areKeysHeldDown(int... virtualKeyCodes) {
 		for(int keyCode : virtualKeyCodes) {
-			if(!isKeyHoldDown(keyCode)) {
+			if(!isKeyHeldDown(keyCode)) {
 				return false;
 			}
 		}
 		return true;
-	}
-	
-	private boolean isKeyHoldDown(GlobalKeyEvent event) {
-		return isKeyHoldDown(event.getVirtualKeyCode());
 	}
 	
 	/**
